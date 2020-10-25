@@ -12,17 +12,15 @@ class BellHop {
         return this;
     }
 
-    buildAttendeeIndex() {
-        var hop = this;
+    buildSearchIndex(people) {
+        var self = this;
 
-        this._searchIndex = lunr(function() {
-            this.ref('userId');
-            this.field('displayName');
-
-            hop.attendees().forEach(function(attendee) {
-                this.add(attendee);
-            }, this);
-        });
+        this._searchIndex = people.flatMap(person => person.names.map(name => {
+            return {
+                room: person.room,
+                name: new RegExp(name, 'i')
+            };
+        }));
 
         return this;
     }
@@ -56,23 +54,31 @@ class BellHop {
         return this.breakoutRooms().flatMap(room => room.attendeeIdList).includes(userGUID);
     }
 
-    roomAssignments(people) {
-        return people.map(person => {
-            var room    = this.findBreakoutRoomByName(person.room);
-            var results = this._searchIndex.search(person.name);
+    findAttendeeBreakoutRoom(attendee) {
+        var results = this._searchIndex
+                          .filter(match => attendee.displayName.match(match.name))
+                          .map(name => name.room);
 
-            if (room == null || results.length === 0) {
-                return null;
+        return new Set(results);
+    }
+
+    roomAssignments() {
+        return this.attendees().map(attendee => {
+            var results = this.findAttendeeBreakoutRoom(attendee);
+
+            if (results.size === 0) {
+                return { type: 'indeterminate', attendee: attendee, results };
             }
-            else if (results[0].score < 0.8) {
-                return { type: 'ambiguous', person: person, results: results };
+            else if (results.size > 1) {
+                return { type: 'ambiguous', attendee: attendee, results };
             }
             else {
+                var room = this.findBreakoutRoomByName(results.values().next().value);
+
                 return {
                     type: 'assignment',
-                    room: room,
-                    person: person,
-                    attendee: this.findAttendeeByUserId(parseInt(results[0].ref))
+                    room,
+                    attendee
                 };
             }
         });

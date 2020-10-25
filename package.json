@@ -1,0 +1,22 @@
+{
+  "name": "bellhop",
+  "version": "2020.10.24",
+  "description": "A tool for sorting Zoom meeting attendees into breakout groups by name.",
+  "main": "''",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/delonnewman/bellhop.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/delonnewman/bellhop/issues"
+  },
+  "homepage": "https://github.com/delonnewman/bellhop#readme",
+  "dependencies": {
+    "lunr": "^2.3.9"
+  }
+}
