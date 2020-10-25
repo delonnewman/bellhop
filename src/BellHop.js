@@ -84,7 +84,7 @@ class BellHop {
                 this.assignAttendeeToBreakoutRoom(assignment.attendee, assignment.room);
             }
             else if (assignment != null && assignment.type === 'ambiguous') {
-                console.error('Ambiguous result for assignment', assignment);
+                console.warn('Ambiguous result for assignment', assignment);
             }
         });
 
