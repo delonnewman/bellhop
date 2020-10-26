@@ -1,5 +1,4 @@
 // jshint esversion: 6
-const BELLHOP_VERSION = '2020.10.24';
 
 class BellHop {
     constructor(store) {
@@ -13,8 +12,6 @@ class BellHop {
     }
 
     buildSearchIndex(people) {
-        var self = this;
-
         this._searchIndex = people.flatMap(person => person.names.map(name => {
             return {
                 room: person.room,
@@ -31,6 +28,17 @@ class BellHop {
 
     attendees() {
         return this._store.getState().attendeesList.attendeesList;
+    }
+
+    latestAttendees() {
+        ch = new Channel();
+
+        var bh = this;
+        bh._store.subscribe(function() {
+            ch.send(bh.attendees());
+        });
+
+        return ch;
     }
 
     breakoutRooms() {
@@ -62,26 +70,31 @@ class BellHop {
         return new Set(results);
     }
 
+    assignmentFor(attendee) {
+        var results = this.findAttendeeBreakoutRoom(attendee);
+
+        if (results.size === 0) {
+            return { type: 'indeterminate', attendee: attendee, results };
+        }
+        else if (results.size > 1) {
+            return { type: 'ambiguous', attendee: attendee, results };
+        }
+        else {
+            var room = this.findBreakoutRoomByName(results.values().next().value);
+
+            return {
+                type: 'assignment',
+                room,
+                attendee
+            };
+        }
+    }
+
     roomAssignments() {
-        return this.attendees().map(attendee => {
-            var results = this.findAttendeeBreakoutRoom(attendee);
-
-            if (results.size === 0) {
-                return { type: 'indeterminate', attendee: attendee, results };
-            }
-            else if (results.size > 1) {
-                return { type: 'ambiguous', attendee: attendee, results };
-            }
-            else {
-                var room = this.findBreakoutRoomByName(results.values().next().value);
-
-                return {
-                    type: 'assignment',
-                    room,
-                    attendee
-                };
-            }
-        });
+        return this.latestAttendees()
+                .flatten()
+                .remove(this.isAttendeeInABreakoutRoom.bind(this))
+                .map(this.assignmentFor.bind(this));
     }
 
     assignToRooms(people) {
@@ -119,6 +132,31 @@ class BellHop {
 
 BellHop.init = function() {
     return new BellHop(document.getElementById('root')._reactRootContainer._internalRoot.current.child.pendingProps.store)
-            .buildAttendeeIndex()
+            .buildSearchIndex(people)
             .freeze();
 };
+
+//(function(){function alwaysValid(){return true}function Atom(val,options){var watchers={};var validator=options&&options.validator||alwaysValid;function transition(next){if(!validator(next)){var err=new Error(next+" failed validation");err.name="AssertionError";throw err}var prev=val;val=next;Object.keys(watchers).forEach(function(k){watchers[k].call(null,k,atom,prev,next)})}this.addWatch=function(key,fn){watchers[key]=fn;return this};this.removeWatch=function(key){delete watchers[key];return this};this.swap=function(fn){var args=[val].concat([].slice.call(arguments,1));transition(fn.apply(null,args));return this};this.reset=function(v){transition(v);return this};this.compareAndSet=function(oldVal,newVal){if(oldVal===val){this.reset(newVal);return true}return false};this.deref=function(){return val};this.toString=function(){return"Atom("+JSON.stringify(val)+")"}}function atom(val,options){return new Atom(val,options)}atom.deref=function(ref){return ref.deref()};atom.isAtom=function(val){return val instanceof Atom};if(typeof module!=="undefined"){module.exports=atom}else{window.atom=atom}}).call(this);
+
+/*
+bh = BellHop.init();
+ch = new Channel();
+
+bh._store.subscribe(function() {
+    ch.send(groupBy(bh.attendees(), 'userId'));
+});
+
+function groupBy(array, prop) {
+    var obj = {}, i, val;
+    for (i = 0; i < array.length; i++) {
+        val = array[i][prop];
+        obj[val] = obj[val] || array[i];
+    }
+    return obj;
+}
+
+var lastList = atom(groupBy(bh.attendees(), 'userId'), { validator: Array.isArray });
+
+ch.receive(function(list) {
+
+});*/
